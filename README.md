@@ -1,5 +1,12 @@
 # BoschIMU
 
+					Second Release = 26 October 2015
+
+Corrected the typecasting and sign extension bugs in the getIMUGyroAngles method that were
+reported on the FTC Technology Forum by "yjw558" and "GearTicks" at:
+http://ftcforum.usfirst.org/showthread.php?4421-Recommendation-for-a-gyro-sensor-that-will-work-on-new-control-system/
+
+
 
                           Initial Release - 19 October 2015
 

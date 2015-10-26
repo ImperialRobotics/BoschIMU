@@ -45,6 +45,9 @@ import java.util.concurrent.locks.Lock;
  * 28 September 2015:
  *  Revised "I2cDevice" method calls in accordance with the 18 Sepetember 2015 release of the FTC
  *  SDK
+ *  26 October 2015 2nd Release
+ *  Corrected the typecasting and sign extension bugs in the getIMUGyroAngles method that were
+ *  reported on the FTC Technology Forum by "yjw558" and "GearTicks"
  *
  */
 
@@ -503,7 +506,7 @@ public class AdafruitIMU implements HardwareDevice, I2cController.I2cPortReadyCa
   * https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
   */
   public void getIMUGyroAngles(double[] roll, double[] pitch, double[] yaw) {
-    int tempR = 0, tempP = 0, tempY = 0;
+    short tempR = 0, tempP = 0, tempY = 0;
     double tempRoll = 0.0, tempPitch = 0.0, tempYaw = 0.0;
     double tempQuatRoll = 0.0, tempQuatPitch = 0.0, tempQuatYaw = 0.0;
 
@@ -511,17 +514,21 @@ public class AdafruitIMU implements HardwareDevice, I2cController.I2cPortReadyCa
       try {
         i2cReadCacheLock.lock();
         quaternionVector[0] =  //Quaternion component "W". See IMU datasheet, Section 3.6.5.5, p.35
-          (double) ((int) i2cReadCache[BNO055_QUATERNION_DATA_W_MSB_ADDR - readCacheOffset] * 256
-                      + (int) i2cReadCache[BNO055_QUATERNION_DATA_W_LSB_ADDR - readCacheOffset]) / 16384.0;
+          (double) ((short)
+          ((i2cReadCache[BNO055_QUATERNION_DATA_W_MSB_ADDR - readCacheOffset] & 0XFF) << 8)
+          | (i2cReadCache[BNO055_QUATERNION_DATA_W_LSB_ADDR - readCacheOffset] & 0XFF)) / 16384.0;
         quaternionVector[1] =  //Quaternion component "X"
-          (double) ((int) i2cReadCache[BNO055_QUATERNION_DATA_X_MSB_ADDR - readCacheOffset] * 256
-                      + (int) i2cReadCache[BNO055_QUATERNION_DATA_X_LSB_ADDR - readCacheOffset]) / 16384.0;
+          (double) ((short)
+          ((i2cReadCache[BNO055_QUATERNION_DATA_X_MSB_ADDR - readCacheOffset] & 0XFF) << 8)
+          | (i2cReadCache[BNO055_QUATERNION_DATA_X_LSB_ADDR - readCacheOffset] & 0XFF)) / 16384.0;
         quaternionVector[2] =  //Quaternion component "Y"
-          (double) ((int) i2cReadCache[BNO055_QUATERNION_DATA_Y_MSB_ADDR - readCacheOffset] * 256
-                      + (int) i2cReadCache[BNO055_QUATERNION_DATA_Y_LSB_ADDR - readCacheOffset]) / 16384.0;
+          (double) ((short)
+          ((i2cReadCache[BNO055_QUATERNION_DATA_Y_MSB_ADDR - readCacheOffset] & 0XFF) << 8)
+          | (i2cReadCache[BNO055_QUATERNION_DATA_Y_LSB_ADDR - readCacheOffset] & 0XFF)) / 16384.0;
         quaternionVector[3] =  //Quaternion component "Z"
-          (double) ((int) i2cReadCache[BNO055_QUATERNION_DATA_Z_MSB_ADDR - readCacheOffset] * 256
-                      + (int) i2cReadCache[BNO055_QUATERNION_DATA_Z_LSB_ADDR - readCacheOffset]) / 16384.0;
+          (double) ((short)
+          ((i2cReadCache[BNO055_QUATERNION_DATA_Z_MSB_ADDR - readCacheOffset] & 0XFF) << 8)
+          | (i2cReadCache[BNO055_QUATERNION_DATA_Z_LSB_ADDR - readCacheOffset] & 0XFF)) / 16384.0;
         /*
         * See IMU datasheet, Section 3.6.2 on p.30 AND Section 4.2.1 on pp. 51 & 52. IT APPEARS THAT
         * THE DOCUMENTATION HAS MISLABELED "ROLL" AS "PITCH" AND "PITCH" AS "ROLL". THIS FORCES
@@ -533,22 +540,22 @@ public class AdafruitIMU implements HardwareDevice, I2cController.I2cPortReadyCa
    * Ref: Table 3-7, p.26, Table 3-13, p.30, and Section 3.6.5.4, p.35
    * This is a fixed-point number in degrees * 16, i.e., 12 integer bits and 4 fractional bits.
    */
-        tempR = (int) i2cReadCache[BNO055_EULER_P_MSB_ADDR - readCacheOffset] * 256
-                  + (int) i2cReadCache[BNO055_EULER_P_LSB_ADDR - readCacheOffset];
+        tempR = (short) (((i2cReadCache[BNO055_EULER_P_MSB_ADDR - readCacheOffset] & 0XFF) << 8)
+                | (i2cReadCache[BNO055_EULER_P_LSB_ADDR - readCacheOffset] & 0XFF));
    /*
    * The IMU reports a 16-bit angle (that is really "pitch", not "roll") between -90 and +90 degrees.
    * Ref: Table 3-7, p.26, Table 3-13, p.30, and Section 3.6.5.4, p.35
    * This is a fixed-point number in degrees * 16, i.e., 12 integer bits and 4 fractional bits.
    */
-        tempP = (int) i2cReadCache[BNO055_EULER_R_MSB_ADDR - readCacheOffset] * 256
-                  + (int) i2cReadCache[BNO055_EULER_R_LSB_ADDR - readCacheOffset];
+        tempP = (short) (((i2cReadCache[BNO055_EULER_R_MSB_ADDR - readCacheOffset] & 0XFF) << 8)
+                | (i2cReadCache[BNO055_EULER_R_LSB_ADDR - readCacheOffset] & 0XFF));
    /*
    * The IMU reports a 16-bit heading angle between 0 and 360 degrees, increasing with clockwise
    * turns. Ref: Table 3-7, p.26, Table 3-13, p.30, and Section 3.6.5.4, p.35
    * This is a fixed-point number in degrees * 16, i.e., 12 integer bits and 4 fractional bits.
    */
-        tempY = (int) i2cReadCache[BNO055_EULER_H_MSB_ADDR - readCacheOffset] * 256
-                  + (int) i2cReadCache[BNO055_EULER_H_LSB_ADDR - readCacheOffset];
+        tempY = (short) (((i2cReadCache[BNO055_EULER_H_MSB_ADDR - readCacheOffset] & 0XFF) << 8)
+                | (i2cReadCache[BNO055_EULER_H_LSB_ADDR - readCacheOffset] & 0XFF));
       } finally {
         i2cReadCacheLock.unlock();
       }
