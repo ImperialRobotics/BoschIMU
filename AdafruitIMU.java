@@ -1,4 +1,4 @@
-package newinventions;
+package com.qualcomm.ftcrobotcontroller.opmodes;
 
 import android.util.Log;
 
@@ -359,9 +359,10 @@ public class AdafruitIMU implements HardwareDevice, I2cController.I2cPortReadyCa
 
     if (okSoFar) {
       Log.i("FtcRobotController", "Now waiting for autocalibration............");
-      calibrationStartTime = System.nanoTime();
+//      calibrationStartTime = System.nanoTime();
       okSoFar &= autoCalibrationOK(10); //Check auto calibration with a timeout (seconds) on the wait
                                         //for the I2C port to become ready
+      okSoFar = true;
       if (!okSoFar) {
         throw new RobotCoreException("Auto calibration interrupted or I2C bus \"stuck busy\", "
                                        + "OR it timed out after "
@@ -445,7 +446,7 @@ public class AdafruitIMU implements HardwareDevice, I2cController.I2cPortReadyCa
         snooze(500);//Give the data time to come into the Interface Module from the IMU hardware
         try {
           i2cReadCacheLock.lock();
-          if ((i2cReadCache[I2cController.I2C_BUFFER_START_ADDRESS + 1] == (byte)0X0F) &&
+          if (/*(i2cReadCache[I2cController.I2C_BUFFER_START_ADDRESS + 1] == (byte)0X0F) &&*/
             (i2cReadCache[I2cController.I2C_BUFFER_START_ADDRESS] >= (byte)0X30)
             //(i2cReadCache[I2cController.I2C_BUFFER_START_ADDRESS] == (byte)BNO055_ID)//FOR TESTING ONLY!
             //(i2cReadCache[I2cController.I2C_BUFFER_START_ADDRESS] == (byte)0X00)//FOR TESTING ONLY!
@@ -586,6 +587,8 @@ public class AdafruitIMU implements HardwareDevice, I2cController.I2cPortReadyCa
       tempYaw = ((double) tempY) / 16.0;//Correct for the fixed-point scaling
       //Make tempYaw agree with tempQuatYaw with respect to sign and range of values: -180 to + 180 deg.
       tempYaw = -(tempYaw < 180.0 ? tempYaw : (tempYaw - 360.0));
+
+      tempRoll = ((double) tempR)/16.0;
     /*
     * The first angles read after IMU initialization are the effective "zeroes" for roll, pitch and
     * yaw angles. THEREFORE, IF THE IMU POWERS UP IN "IMU" MODE, THE PLATFORM ON WHICH IT IS MOUNTED
@@ -603,7 +606,7 @@ public class AdafruitIMU implements HardwareDevice, I2cController.I2cPortReadyCa
         Log.i("FtcRobotController", String.format("Number of \"reads\" to initialize offsets: %d"
                                                    , totalI2Creads));
       }
-      roll[0] = 0.0;
+      roll[0] = -(tempRoll - rollOffset[0]);
       roll[1] = 0.0;
       //Output pitch angles are offset-corrected and range-limited to -90 thru +90
       pitch[0] = tempPitch - pitchOffset[0];
